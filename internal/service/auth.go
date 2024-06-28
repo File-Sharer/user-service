@@ -5,19 +5,23 @@ import (
 	"os"
 	"strings"
 
+	pb "github.com/File-Sharer/user-service/hasher_pbs"
 	"github.com/File-Sharer/user-service/internal/model"
 	"github.com/File-Sharer/user-service/internal/repository"
 	"github.com/File-Sharer/user-service/pkg/auth"
-	"github.com/File-Sharer/user-service/pkg/hasher"
 	"github.com/jackc/pgx/v5"
 )
 
 type AuthService struct {
 	repo *repository.Repository
+	hasher pb.HasherClient
 }
 
-func NewAuthService(repo *repository.Repository) *AuthService {
-	return &AuthService{repo: repo}
+func NewAuthService(repo *repository.Repository, hasherClient pb.HasherClient) *AuthService {
+	return &AuthService{
+		repo: repo,
+		hasher: hasherClient,
+	}
 }
 
 func (s *AuthService) SignUp(ctx context.Context, user *model.User) (string, error) {
@@ -33,11 +37,11 @@ func (s *AuthService) SignUp(ctx context.Context, user *model.User) (string, err
 	}
 	user.Password = passwordHash
 
-	userID, err := hasher.GenerateUserID(user.Login)
-	if err != nil {
-		return "", nil
+	res, err := s.hasher.NewUID(ctx, &pb.NewUIDReq{UserLogin: user.Login})
+	if !res.Ok {
+		return "", err
 	}
-	user.ID = userID
+	user.ID = res.GetUid()
 
 	if err := s.repo.User.Create(ctx, user); err != nil {
 		return "", nil

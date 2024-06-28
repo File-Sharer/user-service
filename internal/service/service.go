@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	pb "github.com/File-Sharer/user-service/hasher_pbs"
 	"github.com/File-Sharer/user-service/internal/model"
 	"github.com/File-Sharer/user-service/internal/repository"
 	"github.com/redis/go-redis/v9"
@@ -23,9 +24,9 @@ type Service struct {
 	User
 }
 
-func New(repo *repository.Repository, rdb *redis.Client) *Service {
+func New(repo *repository.Repository, rdb *redis.Client, hasherClient pb.HasherClient) *Service {
 	return &Service{
-		Auth: NewAuthService(repo),
+		Auth: NewAuthService(repo, hasherClient),
 		User: NewUserService(repo, rdb),
 	}
 }

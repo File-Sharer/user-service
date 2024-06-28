@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	pb "github.com/File-Sharer/user-service/hasher_pbs"
 	"github.com/File-Sharer/user-service/internal/config"
 	"github.com/File-Sharer/user-service/internal/handler"
 	"github.com/File-Sharer/user-service/internal/repository"
@@ -16,6 +17,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -28,6 +31,18 @@ func main() {
 	if err := initEnv(); err != nil {
 		logrus.Fatalf("error initializing env: %s", err.Error())
 	}
+
+	hasherConn, err := grpc.NewClient(viper.GetString("hasherService.target"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logrus.Fatalf("error connecting to hasher grpc service: %s", err.Error())
+	}
+	defer func ()  {
+		if err := hasherConn.Close(); err != nil {
+			logrus.Fatalf("error closing grpc hasher service connection: %s", err.Error())
+		}
+	}()
+
+	hasherClient := pb.NewHasherClient(hasherConn)
 
 	dbConfig := &config.DBConfig{
 		Username: os.Getenv("DB_USERNAME"),
@@ -57,7 +72,7 @@ func main() {
 	}()
 
 	repo := repository.New(db)
-	services := service.New(repo, rdb)
+	services := service.New(repo, rdb, hasherClient)
 	handlers := handler.New(services)
 
 	srv := server.New()
