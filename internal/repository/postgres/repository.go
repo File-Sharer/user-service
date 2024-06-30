@@ -1,13 +1,10 @@
-package repository
+package postgres
 
 import (
 	"context"
 
 	"github.com/File-Sharer/user-service/internal/model"
-	"github.com/File-Sharer/user-service/internal/repository/postgres"
-	redisrepo "github.com/File-Sharer/user-service/internal/repository/redis"
 	"github.com/jackc/pgx/v5"
-	"github.com/redis/go-redis/v9"
 )
 
 type User interface {
@@ -18,13 +15,11 @@ type User interface {
 }
 
 type Repository struct {
-	Postgres *postgres.Repository
-	Redis    *redisrepo.Repository
+	User
 }
 
-func New(db *pgx.Conn, rdb *redis.Client) *Repository {
+func New(db *pgx.Conn) *Repository {
 	return &Repository{
-		Postgres: postgres.New(db),
-		Redis: redisrepo.New(rdb),
+		User: NewUserRepo(db),
 	}
 }

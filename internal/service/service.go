@@ -6,7 +6,6 @@ import (
 	pb "github.com/File-Sharer/user-service/hasher_pbs"
 	"github.com/File-Sharer/user-service/internal/model"
 	"github.com/File-Sharer/user-service/internal/repository"
-	"github.com/redis/go-redis/v9"
 )
 
 type Auth interface {
@@ -16,7 +15,6 @@ type Auth interface {
 
 type User interface {
 	FindByID(ctx context.Context, id string) (*model.User, error)
-	FindByLogin(ctx context.Context, login string) (*model.User, error)
 }
 
 type Service struct {
@@ -24,9 +22,9 @@ type Service struct {
 	User
 }
 
-func New(repo *repository.Repository, rdb *redis.Client, hasherClient pb.HasherClient) *Service {
+func New(repo *repository.Repository, hasherClient pb.HasherClient) *Service {
 	return &Service{
 		Auth: NewAuthService(repo, hasherClient),
-		User: NewUserService(repo, rdb),
+		User: NewUserService(repo),
 	}
 }

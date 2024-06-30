@@ -27,7 +27,7 @@ func NewAuthService(repo *repository.Repository, hasherClient pb.HasherClient) *
 func (s *AuthService) SignUp(ctx context.Context, user *model.User) (string, error) {
 	user.Login = strings.TrimSpace(strings.ToLower(user.Login))
 
-	if s.repo.User.ExistsByLogin(ctx, user.Login) {
+	if s.repo.Postgres.User.ExistsByLogin(ctx, user.Login) {
 		return "", errLoginAlreadyTaken
 	}
 
@@ -43,7 +43,7 @@ func (s *AuthService) SignUp(ctx context.Context, user *model.User) (string, err
 	}
 	user.ID = res.GetUid()
 
-	if err := s.repo.User.Create(ctx, user); err != nil {
+	if err := s.repo.Postgres.User.Create(ctx, user); err != nil {
 		return "", nil
 	}
 
@@ -56,7 +56,7 @@ func (s *AuthService) SignUp(ctx context.Context, user *model.User) (string, err
 }
 
 func (s *AuthService) SignIn(ctx context.Context, user *model.User) (string, error) {
-	userDB, err := s.repo.User.FindByLogin(ctx, strings.TrimSpace(strings.ToLower(user.Login)))
+	userDB, err := s.repo.Postgres.User.FindByLogin(ctx, strings.TrimSpace(strings.ToLower(user.Login)))
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return "", errInvalidCredentials

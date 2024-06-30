@@ -11,6 +11,7 @@ import (
 	"github.com/File-Sharer/user-service/internal/config"
 	"github.com/File-Sharer/user-service/internal/handler"
 	"github.com/File-Sharer/user-service/internal/repository"
+	"github.com/File-Sharer/user-service/internal/repository/postgres"
 	"github.com/File-Sharer/user-service/internal/server"
 	"github.com/File-Sharer/user-service/internal/service"
 	"github.com/joho/godotenv"
@@ -52,7 +53,7 @@ func main() {
 		DBName: os.Getenv("DB_NAME"),
 		SSLMode: os.Getenv("DB_SSLMODE"),
 	}
-	db, err := repository.NewPostgresDB(context.Background(), dbConfig)
+	db, err := postgres.NewPostgresDB(context.Background(), dbConfig)
 	if err != nil {
 		logrus.Fatalf("error opening db: %s", err.Error())
 	}
@@ -71,8 +72,8 @@ func main() {
 		}
 	}()
 
-	repo := repository.New(db)
-	services := service.New(repo, rdb, hasherClient)
+	repo := repository.New(db, rdb)
+	services := service.New(repo, hasherClient)
 	handlers := handler.New(services)
 
 	srv := server.New()

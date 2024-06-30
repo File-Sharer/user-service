@@ -13,80 +13,37 @@ import (
 
 type UserService struct {
 	repo *repository.Repository
-	rdb *redis.Client
 }
 
-func NewUserService(repo *repository.Repository, rdb *redis.Client) *UserService {
-	return &UserService{
-		repo: repo,
-		rdb: rdb,
-	}
+func NewUserService(repo *repository.Repository) *UserService {
+	return &UserService{repo: repo}
 }
 
 func (s *UserService) FindByID(ctx context.Context, id string) (*model.User, error) {
-	user, err := s.rdb.Get(ctx, userPrefix + id).Result()
+	user, err := s.repo.Redis.User.Find(ctx, userPrefix + id)
+	if err == nil {
+		fmt.Println("HELLO USER FROM REDIS")
+		return user, nil
+	}
+
+	if err != redis.Nil {
+		return nil, err
+	}
+
+	userDB, err := s.repo.Postgres.User.FindByID(ctx, id)
 	if err != nil {
-		if err == redis.Nil {
-			userDB, err := s.repo.User.FindByID(ctx, id)
-			if err != nil {
-				return nil, err
-			}
-
-			userJSON, err := json.Marshal(userDB)
-			if err != nil {
-				return nil, err
-			}
-
-			if err := s.rdb.Set(ctx, userPrefix + id, userJSON, time.Hour * 24).Err(); err != nil {
-				return nil, err
-			}
-
-			fmt.Println("HELLO USER FROM POSTGRES!")
-			return userDB, nil
-		}
-
 		return nil, err
 	}
 
-	var userDB model.User
-	if err := json.Unmarshal([]byte(user), &userDB); err != nil {
-		return nil, err
-	}
-
-	fmt.Println("HELLO USER FROM REDIS")
-	return &userDB, nil
-}
-
-func (s *UserService) FindByLogin(ctx context.Context, login string) (*model.User, error) {
-	user, err := s.rdb.Get(ctx, userLoginPrefix + login).Result()
+	userJSON, err := json.Marshal(userDB)
 	if err != nil {
-		if err == redis.Nil {
-			userDB, err := s.repo.User.FindByLogin(ctx, login)
-			if err != nil {
-				return nil, err
-			}
-
-			userJSON, err := json.Marshal(userDB)
-			if err != nil {
-				return nil, err
-			}
-
-			if err := s.rdb.Set(ctx, userLoginPrefix + login, userJSON, time.Hour * 24).Err(); err != nil {
-				return nil, err
-			}
-
-			fmt.Println("HELLO USER LOGIN FROM POSTGRES")
-			return userDB, nil
-		}
-
 		return nil, err
 	}
 
-	var userDB model.User
-	if err := json.Unmarshal([]byte(user), &userDB); err != nil {
+	if err := s.repo.Redis.User.Create(ctx, userPrefix + id, userJSON, time.Hour * 48); err != nil {
 		return nil, err
 	}
 
-	fmt.Println("HELLO USER LOGIN FROM REDIS")
-	return &userDB, nil
+	fmt.Println("HELLO USER FROM POSTGRES!")
+	return userDB, nil
 }
