@@ -4,9 +4,7 @@ import (
 	"net/http"
 
 	"github.com/File-Sharer/user-service/internal/model"
-	"github.com/File-Sharer/user-service/pkg/auth"
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
 )
 
 func (h *Handler) authSignUp(c *gin.Context) {
@@ -22,12 +20,7 @@ func (h *Handler) authSignUp(c *gin.Context) {
 		return
 	}
 
-	if err := auth.SendToken(c, token, viper.GetString("app.host")); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"ok": true, "error": nil})
+	c.JSON(http.StatusOK, gin.H{"ok": true, "error": nil, "token": token})
 }
 
 func (h *Handler) authSignIn(c *gin.Context) {
@@ -43,10 +36,5 @@ func (h *Handler) authSignIn(c *gin.Context) {
 		return
 	}
 
-	if err := auth.SendToken(c, token, viper.GetString("app.host")); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"ok": true, "error": nil})
+	c.JSON(http.StatusOK, gin.H{"ok": true, "error": nil, "token": token})
 }

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -20,11 +19,6 @@ func GenerateToken(id string, secretKey []byte) (string, error) {
 	}
 
 	return jwt, nil
-}
-
-func SendToken(c *gin.Context, token string, host string) error {
-	c.SetCookie("jwt", token, int(time.Now().Add(time.Hour * 24).Unix()), "/", host, true, true)
-	return nil
 }
 
 func GetTokenClaims(token string, secretKey []byte) (jwt.MapClaims, error) {

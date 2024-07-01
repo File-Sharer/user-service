@@ -7,7 +7,9 @@ import (
 	"github.com/File-Sharer/user-service/internal/model"
 	"github.com/File-Sharer/user-service/internal/service"
 	"github.com/File-Sharer/user-service/pkg/auth"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 type Handler struct {
@@ -22,6 +24,12 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.New()
 
 	router.SetTrustedProxies(nil)
+
+	router.Use(cors.New(cors.Config{
+		AllowOrigins: []string{viper.GetString("fileService.url"), viper.GetString("frontend.url")},
+		AllowMethods: []string{"POST", "GET"},
+		AllowHeaders: []string{"Authorization", "Content-Type"},
+	}))
 
 	api := router.Group("/api")
 	{
