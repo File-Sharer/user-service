@@ -9,8 +9,8 @@ import (
 )
 
 type Auth interface {
-	SignUp(ctx context.Context, user *model.User) (string, error)
-	SignIn(ctx context.Context, user *model.User) (string, error)
+	SignUp(ctx context.Context, user *model.User) (*model.User, string, error)
+	SignIn(ctx context.Context, user *model.User) (*model.User, string, error)
 }
 
 type User interface {
