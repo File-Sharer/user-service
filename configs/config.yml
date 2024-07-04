@@ -6,7 +6,7 @@ hasherService:
   target: "localhost:8090"
 
 fileService:
-  url: "http://localhost:9000"
+  origin: "http://localhost:9000"
 
 frontend:
-  url: "http://localhost:5173"
+  origin: "http://localhost:5173"
