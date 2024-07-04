@@ -26,7 +26,7 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	router.SetTrustedProxies(nil)
 
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{viper.GetString("fileService.url"), viper.GetString("frontend.url")},
+		AllowOrigins: []string{viper.GetString("fileService.url"), viper.GetString("frontend.url"), os.Getenv("WEB_ADDR")},
 		AllowMethods: []string{"POST", "GET"},
 		AllowHeaders: []string{"Authorization", "Content-Type"},
 	}))
