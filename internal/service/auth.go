@@ -39,7 +39,7 @@ func (s *AuthService) SignUp(ctx context.Context, user *model.User) (*model.User
 	user.Password = passwordHash
 
 	res, err := s.hasher.NewUID(ctx, &pb.NewUIDReq{UserLogin: user.Login})
-	if !res.Ok {
+	if !res.GetOk() {
 		return nil, "", err
 	}
 	user.ID = res.GetUid()
