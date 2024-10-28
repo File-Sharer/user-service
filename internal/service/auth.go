@@ -50,12 +50,12 @@ func (s *AuthService) SignUp(ctx context.Context, user *model.User) (*model.User
 		return nil, "", nil
 	}
 
-	token, err := auth.GenerateToken(user.ID, []byte(os.Getenv("JWT_SECRET")))
+	newJwtRes, err := s.hasher.NewJWT(ctx, &pb.NewJWTReq{Secret: os.Getenv("HASHER_SECRET"), UserId: user.ID, Role: user.Role})
 	if err != nil {
 		return nil, "", err
 	}
 
-	return user.DTO(), token, nil
+	return user.DTO(), newJwtRes.Token, nil
 }
 
 func (s *AuthService) SignIn(ctx context.Context, user *model.User) (*model.User, string, error) {
@@ -71,10 +71,10 @@ func (s *AuthService) SignIn(ctx context.Context, user *model.User) (*model.User
 		return nil, "", errInvalidCredentials
 	}
 
-	token, err := auth.GenerateToken(userDB.ID, []byte(os.Getenv("JWT_SECRET")))
+	newJwtRes, err := s.hasher.NewJWT(ctx, &pb.NewJWTReq{Secret: os.Getenv("HASHER_SECRET"), UserId: userDB.ID, Role: userDB.Role})
 	if err != nil {
 		return nil, "", err
 	}
 
-	return userDB.DTO(), token, nil
+	return userDB.DTO(), newJwtRes.Token, nil
 }

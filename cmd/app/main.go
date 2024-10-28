@@ -74,7 +74,7 @@ func main() {
 
 	repo := repository.New(db, rdb)
 	services := service.New(repo, hasherClient)
-	handlers := handler.New(services)
+	handlers := handler.New(services, hasherClient)
 
 	srv := server.New()
 	serverConfig := &config.ServerConfig{
@@ -111,5 +111,5 @@ func initConfig() error {
 }
 
 func initEnv() error {
-	return godotenv.Load()
+	return godotenv.Load(".env")
 }

@@ -4,9 +4,9 @@ import (
 	"context"
 	"os"
 
+	pb "github.com/File-Sharer/user-service/hasher_pbs"
 	"github.com/File-Sharer/user-service/internal/model"
 	"github.com/File-Sharer/user-service/internal/service"
-	"github.com/File-Sharer/user-service/pkg/auth"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -14,10 +14,14 @@ import (
 
 type Handler struct {
 	services *service.Service
+	hasherClient pb.HasherClient
 }
 
-func New(services *service.Service) *Handler {
-	return &Handler{services: services}
+func New(services *service.Service, hasherClient pb.HasherClient) *Handler {
+	return &Handler{
+		services: services,
+		hasherClient: hasherClient,
+	}
 }
 
 func (h *Handler) InitRoutes() *gin.Engine {
@@ -50,14 +54,12 @@ func (h *Handler) InitRoutes() *gin.Engine {
 }
 
 func (h *Handler) getUserDataFromTokenClaims(ctx context.Context, token string) (*model.User, error) {
-	claims, err := auth.GetTokenClaims(token, []byte(os.Getenv("JWT_SECRET")))
+	userRes, err := h.hasherClient.DecodeJWT(ctx, &pb.DecodeJWTReq{Secret: os.Getenv("HASHER_SECRET"), Jwt: token})
 	if err != nil {
 		return nil, err
 	}
 
-	id := claims["sub"].(string)
-
-	user, err := h.services.User.FindByID(ctx, id)
+	user, err := h.services.User.FindByID(ctx, userRes.UserId)
 	if err != nil {
 		return nil, err
 	}
