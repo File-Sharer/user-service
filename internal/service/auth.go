@@ -16,65 +16,99 @@ import (
 type AuthService struct {
 	repo *repository.Repository
 	hasher pb.HasherClient
+	userService User
 }
 
-func NewAuthService(repo *repository.Repository, hasherClient pb.HasherClient) *AuthService {
+func NewAuthService(repo *repository.Repository, hasherClient pb.HasherClient, userService User) *AuthService {
 	return &AuthService{
 		repo: repo,
 		hasher: hasherClient,
+		userService: userService,
 	}
 }
 
-func (s *AuthService) SignUp(ctx context.Context, user *model.User) (*model.User, string, error) {
+func (s *AuthService) SignUp(ctx context.Context, user *model.User) (*model.User, *model.JWTPair, error) {
 	user.Login = strings.TrimSpace(strings.ToLower(user.Login))
 
 	if s.repo.Postgres.User.ExistsByLogin(ctx, user.Login) {
-		return nil, "", errLoginAlreadyTaken
+		return nil, nil, errLoginAlreadyTaken
 	}
 
 	passwordHash, err := auth.HashPassword([]byte(strings.TrimSpace(user.Password)))
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	user.Password = passwordHash
 
 	res, err := s.hasher.NewUID(ctx, &pb.NewUIDReq{UserLogin: user.Login})
 	if !res.GetOk() {
-		return nil, "", err
+		return nil, nil, err
 	}
 	user.ID = res.GetUid()
 	user.Role = "USER"
 	user.DateAdded = time.Now()
 
 	if err := s.repo.Postgres.User.Create(ctx, user); err != nil {
-		return nil, "", nil
+		return nil, nil, nil
 	}
 
-	newJwtRes, err := s.hasher.NewJWT(ctx, &pb.NewJWTReq{Secret: os.Getenv("HASHER_SECRET"), UserId: user.ID, Role: user.Role})
+	jwtPairRes, err := s.hasher.GenerateJWTPair(ctx, &pb.GenerateJWTPairReq{Secret: os.Getenv("HASHER_SECRET"), UserId: user.ID, Role: user.Role})
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 
-	return user.DTO(), newJwtRes.Token, nil
+	return user.DTO(), &model.JWTPair{
+		AccessToken: jwtPairRes.GetAccessToken(),
+		RefreshToken: jwtPairRes.GetRefreshToken(),
+	}, nil
 }
 
-func (s *AuthService) SignIn(ctx context.Context, user *model.User) (*model.User, string, error) {
+func (s *AuthService) SignIn(ctx context.Context, user *model.User) (*model.User, *model.JWTPair, error) {
 	userDB, err := s.repo.Postgres.User.FindByLogin(ctx, strings.TrimSpace(strings.ToLower(user.Login)))
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, "", errInvalidCredentials
+			return nil, nil, errInvalidCredentials
 		}
-		return nil, "", err
+		return nil, nil, err
 	}
 
 	if !auth.VerifyPassword([]byte(userDB.Password), []byte(user.Password)) {
-		return nil, "", errInvalidCredentials
+		return nil, nil, errInvalidCredentials
 	}
 
-	newJwtRes, err := s.hasher.NewJWT(ctx, &pb.NewJWTReq{Secret: os.Getenv("HASHER_SECRET"), UserId: userDB.ID, Role: userDB.Role})
+	jwtPairRes, err := s.hasher.GenerateJWTPair(ctx, &pb.GenerateJWTPairReq{Secret: os.Getenv("HASHER_SECRET"), UserId: userDB.ID, Role: userDB.Role})
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 
-	return userDB.DTO(), newJwtRes.Token, nil
+	return userDB.DTO(), &model.JWTPair{
+		AccessToken: jwtPairRes.GetAccessToken(),
+		RefreshToken: jwtPairRes.GetRefreshToken(),
+	}, nil
+}
+
+func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.JWTPair, *model.User, error) {
+	decodedJwt, err := s.hasher.DecodeJWT(ctx, &pb.DecodeJWTReq{Secret: os.Getenv("HASHER_SECRET"), Jwt: refreshToken})
+	if err != nil || !decodedJwt.Ok {
+		return nil, nil, err
+	}
+
+	jwtPair, err := s.hasher.GenerateJWTPair(ctx, &pb.GenerateJWTPairReq{
+		Secret: os.Getenv("HASHER_SECRET"),
+		UserId: decodedJwt.GetUserId(),
+		Role: decodedJwt.GetRole(),
+	})
+	if err != nil || !jwtPair.Ok {
+		return nil, nil, err
+	}
+
+	user, err := s.userService.FindByID(ctx, decodedJwt.GetUserId())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &model.JWTPair{
+		AccessToken: jwtPair.GetAccessToken(),
+		RefreshToken: jwtPair.GetRefreshToken(),
+	}, user, nil
 }

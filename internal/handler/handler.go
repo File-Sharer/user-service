@@ -30,7 +30,8 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	router.SetTrustedProxies(nil)
 
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{viper.GetString("fileService.origin"), viper.GetString("frontend.origin")},
+		AllowOrigins: []string{viper.GetString("frontend.origin")},
+		AllowCredentials: true,
 		AllowMethods: []string{"POST", "GET"},
 		AllowHeaders: []string{"Authorization", "Content-Type"},
 	}))
@@ -41,6 +42,8 @@ func (h *Handler) InitRoutes() *gin.Engine {
 		{
 			auth.POST("/signup", h.authSignUp)
 			auth.POST("/signin", h.authSignIn)
+			auth.GET("/refresh", h.authRefresh)
+			auth.GET("/signout", h.authSignout)
 		}
 
 		user := api.Group("/user")
@@ -55,7 +58,7 @@ func (h *Handler) InitRoutes() *gin.Engine {
 
 func (h *Handler) getUserDataFromTokenClaims(ctx context.Context, token string) (*model.User, error) {
 	userRes, err := h.hasherClient.DecodeJWT(ctx, &pb.DecodeJWTReq{Secret: os.Getenv("HASHER_SECRET"), Jwt: token})
-	if err != nil {
+	if err != nil || !userRes.Ok {
 		return nil, err
 	}
 

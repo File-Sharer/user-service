@@ -19,3 +19,8 @@ func (u *User) DTO() *User {
 		DateAdded: u.DateAdded,
 	}
 }
+
+type JWTPair struct {
+	AccessToken string
+	RefreshToken string
+}

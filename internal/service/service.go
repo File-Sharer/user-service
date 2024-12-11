@@ -9,8 +9,8 @@ import (
 )
 
 type Auth interface {
-	SignUp(ctx context.Context, user *model.User) (*model.User, string, error)
-	SignIn(ctx context.Context, user *model.User) (*model.User, string, error)
+	SignUp(ctx context.Context, user *model.User) (*model.User, *model.JWTPair, error)
+	SignIn(ctx context.Context, user *model.User) (*model.User, *model.JWTPair, error)
 }
 
 type User interface {
@@ -23,8 +23,10 @@ type Service struct {
 }
 
 func New(repo *repository.Repository, hasherClient pb.HasherClient) *Service {
+	userService := NewUserService(repo)
+
 	return &Service{
-		Auth: NewAuthService(repo, hasherClient),
-		User: NewUserService(repo),
+		Auth: NewAuthService(repo, hasherClient, userService),
+		User: userService,
 	}
 }
