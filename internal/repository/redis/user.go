@@ -17,21 +17,25 @@ func NewUserRepo(rdb *redis.Client) *UserRepo {
 	return &UserRepo{rdb: rdb}
 }
 
-func (r *UserRepo) Create(ctx context.Context, key string, value []byte, expiry time.Duration) error {
-	err := r.rdb.Set(ctx, key, value, expiry).Err()
-	return err
+func (r *UserRepo) Create(ctx context.Context, key string, value model.User, expiry time.Duration) error {
+	valueJSON, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	return r.rdb.Set(ctx, key, valueJSON, expiry).Err()
 }
 
 func (r *UserRepo) Find(ctx context.Context, key string) (*model.User, error) {
-	user, err := r.rdb.Get(ctx, key).Result()
+	userCache, err := r.rdb.Get(ctx, key).Result()
 	if err != nil {
 		return nil, err
 	}
 
-	var userDB model.User
-	if err := json.Unmarshal([]byte(user), &userDB); err != nil {
+	var user model.User
+	if err := json.Unmarshal([]byte(userCache), &user); err != nil {
 		return nil, err
 	}
 
-	return &userDB, nil
+	return &user, nil
 }

@@ -5,6 +5,7 @@ import (
 
 	pb "github.com/File-Sharer/user-service/hasher_pbs"
 	"github.com/File-Sharer/user-service/internal/model"
+	"github.com/File-Sharer/user-service/internal/rabbitmq"
 	"github.com/File-Sharer/user-service/internal/repository"
 )
 
@@ -22,11 +23,11 @@ type Service struct {
 	User
 }
 
-func New(repo *repository.Repository, hasherClient pb.HasherClient) *Service {
+func New(repo *repository.Repository, rabbitmq *rabbitmq.MQConn, hasherClient pb.HasherClient) *Service {
 	userService := NewUserService(repo)
 
 	return &Service{
-		Auth: NewAuthService(repo, hasherClient, userService),
+		Auth: NewAuthService(repo, rabbitmq, hasherClient, userService),
 		User: userService,
 	}
 }

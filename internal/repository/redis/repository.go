@@ -9,7 +9,7 @@ import (
 )
 
 type User interface {
-	Create(ctx context.Context, key string, value []byte, expiry time.Duration) error
+	Create(ctx context.Context, key string, value model.User, expiry time.Duration) error
 	Find(ctx context.Context, key string) (*model.User, error)
 }
 

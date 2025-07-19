@@ -7,7 +7,6 @@ import (
 	pb "github.com/File-Sharer/user-service/hasher_pbs"
 	"github.com/File-Sharer/user-service/internal/model"
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 func (h *Handler) authSignUp(c *gin.Context) {
@@ -80,8 +79,6 @@ func (h *Handler) authRefresh(c *gin.Context) {
 
 	c.SetSameSite(http.SameSiteNoneMode)
 	c.SetCookie("refreshToken", jwtPair.GetRefreshToken(), 3600 * 24 * 7, "/", "localhost", true, true)
-
-	logrus.Info("refreshed")
 
 	c.JSON(http.StatusOK, gin.H{"ok": true, "error": nil, "accessToken": jwtPair.GetAccessToken(), "user": user})
 }

@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"strings"
 	"time"
 
 	pb "github.com/File-Sharer/user-service/hasher_pbs"
 	"github.com/File-Sharer/user-service/internal/model"
+	"github.com/File-Sharer/user-service/internal/rabbitmq"
 	"github.com/File-Sharer/user-service/internal/repository"
 	"github.com/File-Sharer/user-service/pkg/auth"
 	"github.com/jackc/pgx/v5"
@@ -15,13 +17,15 @@ import (
 
 type AuthService struct {
 	repo *repository.Repository
+	rabbitmq *rabbitmq.MQConn
 	hasher pb.HasherClient
 	userService User
 }
 
-func NewAuthService(repo *repository.Repository, hasherClient pb.HasherClient, userService User) *AuthService {
+func NewAuthService(repo *repository.Repository, rabbitmq *rabbitmq.MQConn, hasherClient pb.HasherClient, userService User) *AuthService {
 	return &AuthService{
 		repo: repo,
+		rabbitmq: rabbitmq,
 		hasher: hasherClient,
 		userService: userService,
 	}
@@ -49,7 +53,15 @@ func (s *AuthService) SignUp(ctx context.Context, user *model.User) (*model.User
 	user.DateAdded = time.Now()
 
 	if err := s.repo.Postgres.User.Create(ctx, user); err != nil {
-		return nil, nil, nil
+		return nil, nil, err
+	}
+
+	userCreatedMQ, err := json.Marshal(userCreated{UserID: user.ID})
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := s.rabbitmq.PublishExchange(rabbitmq.USERS_CREATE_EXCHANGE, userCreatedMQ); err != nil {
+		return nil, nil, err
 	}
 
 	jwtPairRes, err := s.hasher.GenerateJWTPair(ctx, &pb.GenerateJWTPairReq{Secret: os.Getenv("HASHER_SECRET"), UserId: user.ID, Role: user.Role})
@@ -61,6 +73,10 @@ func (s *AuthService) SignUp(ctx context.Context, user *model.User) (*model.User
 		AccessToken: jwtPairRes.GetAccessToken(),
 		RefreshToken: jwtPairRes.GetRefreshToken(),
 	}, nil
+}
+
+type userCreated struct {
+	UserID string `json:"userId"`
 }
 
 func (s *AuthService) SignIn(ctx context.Context, user *model.User) (*model.User, *model.JWTPair, error) {
