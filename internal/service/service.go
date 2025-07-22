@@ -7,6 +7,7 @@ import (
 	"github.com/File-Sharer/user-service/internal/model"
 	"github.com/File-Sharer/user-service/internal/rabbitmq"
 	"github.com/File-Sharer/user-service/internal/repository"
+	"github.com/redis/go-redis/v9"
 )
 
 type Auth interface {
@@ -23,8 +24,8 @@ type Service struct {
 	User
 }
 
-func New(repo *repository.Repository, rabbitmq *rabbitmq.MQConn, hasherClient pb.HasherClient) *Service {
-	userService := NewUserService(repo)
+func New(repo *repository.Repository, rabbitmq *rabbitmq.MQConn, hasherClient pb.HasherClient, rdb *redis.Client) *Service {
+	userService := NewUserService(repo, rdb)
 
 	return &Service{
 		Auth: NewAuthService(repo, rabbitmq, hasherClient, userService),

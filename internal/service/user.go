@@ -6,19 +6,24 @@ import (
 
 	"github.com/File-Sharer/user-service/internal/model"
 	"github.com/File-Sharer/user-service/internal/repository"
+	"github.com/File-Sharer/user-service/internal/repository/redisrepo"
 	"github.com/redis/go-redis/v9"
 )
 
 type UserService struct {
 	repo *repository.Repository
+	rdb *redis.Client
 }
 
-func NewUserService(repo *repository.Repository) *UserService {
-	return &UserService{repo: repo}
+func NewUserService(repo *repository.Repository, rdb *redis.Client) *UserService {
+	return &UserService{
+		repo: repo,
+		rdb: rdb,
+	}
 }
 
 func (s *UserService) FindByID(ctx context.Context, id string) (*model.User, error) {
-	userCache, err := s.repo.Redis.User.Find(ctx, userPrefix + id)
+	userCache, err := redisrepo.Get[model.User](s.rdb, ctx, UserPrefix(id))
 	if err == nil {
 		return userCache, nil
 	}
@@ -31,7 +36,7 @@ func (s *UserService) FindByID(ctx context.Context, id string) (*model.User, err
 		return nil, err
 	}
 
-	if err := s.repo.Redis.User.Create(ctx, userPrefix + id, *user, time.Hour * 48); err != nil {
+	if err := redisrepo.SetJSON(s.rdb, ctx, UserPrefix(id), *user, time.Hour * 48); err != nil {
 		return nil, err
 	}
 

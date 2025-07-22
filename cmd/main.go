@@ -75,9 +75,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("error connecting to rabbitmq: %s", err.Error())
 	}
-
-	repo := repository.New(db, rdb)
-	services := service.New(repo, rabbitmq, hasherClient)
+	
+	repo := repository.New(db)
+	services := service.New(repo, rabbitmq, hasherClient, rdb)
 	handlers := handler.New(services, hasherClient)
 
 	srv := server.New()
