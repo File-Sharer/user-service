@@ -56,7 +56,7 @@ func (s *AuthService) SignUp(ctx context.Context, user *model.User) (*model.User
 		return nil, nil, err
 	}
 
-	userCreatedMQ, err := json.Marshal(userCreated{UserID: user.ID})
+	userCreatedMQ, err := json.Marshal(userCreated{UserID: user.ID, Username: user.Login})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -76,7 +76,8 @@ func (s *AuthService) SignUp(ctx context.Context, user *model.User) (*model.User
 }
 
 type userCreated struct {
-	UserID string `json:"userId"`
+	UserID   string `json:"userId"`
+	Username string `json:"username"`
 }
 
 func (s *AuthService) SignIn(ctx context.Context, user *model.User) (*model.User, *model.JWTPair, error) {
